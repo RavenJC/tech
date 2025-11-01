@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - TechStore</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">🛒 TechStore</div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="cart.html">Cart (<span id="cart-count">0</span>)</a>
+                <a href="my-orders.html">My Orders</a>
+                <a href="#" id="auth-link">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="product-detail-section">
+        <div class="container">
+            <div id="product-detail" class="product-detail">
+                <div class="loading">Loading product details...</div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechStore. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Get product ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+
+        if (!productId) {
+            document.getElementById('product-detail').innerHTML = '<p>Product not found</p>';
+        } else {
+            // Load product details from Firestore
+            db.collection('products').doc(productId).get()
+                .then(doc => {
+                    if (doc.exists) {
+                        const product = { id: doc.id, ...doc.data() };
+                        displayProductDetails(product);
+                    } else {
+                        document.getElementById('product-detail').innerHTML = '<p>Product not found</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading product:', error);
+                    document.getElementById('product-detail').innerHTML = '<p>Error loading product</p>';
+                });
+        }
+
+        // Display product details
+        function displayProductDetails(product) {
+            const detailContainer = document.getElementById('product-detail');
+            detailContainer.innerHTML = `
+                <div class="product-image-large">
+                    <img src="${product.imageUrl}" alt="${product.name}">
+                </div>
+                <div class="product-info-detailed">
+                    <h1>${product.name}</h1>
+                    <p class="product-price">₱${product.price.toFixed(2)}</p>
+                    <p class="product-description">${product.description}</p>
+                    <p class="product-stock">In Stock: ${product.stock} units</p>
+                    <div class="quantity-selector">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" id="quantity" value="1" min="1" max="${product.stock}">
+                    </div>
+                    <button class="btn-primary" onclick="addToCartFromDetail('${product.id}', '${product.name}', ${product.price}, '${product.imageUrl}')">
+                        Add to Cart
+                    </button>
+                    <button class="btn-secondary" onclick="window.location.href='index.html'">
+                        Back to Products
+                    </button>
+                </div>
+            `;
+        }
+
+        // Add to cart from product detail page
+        function addToCartFromDetail(id, name, price, imageUrl) {
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            
+            // Check if product already in cart
+            const existingItem = cart.find(item => item.id === id);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({ id, name, price, imageUrl, quantity });
+            }
+            
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartCount();
+            alert('Product added to cart!');
+        }
+
+        // Update cart count
+        function updateCartCount() {
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cart-count').textContent = totalItems;
+        }
+
+        updateCartCount();
+    </script>
+</body>
+</html>
